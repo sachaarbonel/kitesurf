@@ -55,7 +55,8 @@ export function installInitShims(): void {
   realClearTimeout = globalThis.clearTimeout;
   realSetInterval = (globalThis as { setInterval?: unknown }).setInterval as RealSetTimeout;
   realClearInterval = (globalThis as { clearInterval?: unknown }).clearInterval as RealClearTimeout;
-  realFetch = globalThis.fetch;
+  const fetchBeforeInit = globalThis.fetch;
+  realFetch = fetchBeforeInit;
 
   const coerceInitTimerTask = (fn: TimerFn | string | unknown): TimerFn => {
     if (typeof fn === "function") return fn as TimerFn;
@@ -139,6 +140,8 @@ export function installInitShims(): void {
     input: Parameters<typeof globalThis.fetch>[0],
     init?: Parameters<typeof globalThis.fetch>[1],
   ): Promise<Response> {
+    // A page module can retain this function after the startup queue drains.
+    if (!installed) return fetchBeforeInit(input, init);
     let resolve!: (value: Response) => void;
     let reject!: (reason: unknown) => void;
     const promise = new Promise<Response>((resolveResponse, rejectResponse) => {
